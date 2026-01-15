@@ -1,0 +1,107 @@
+:root {
+    --primary: #6e45e2;
+    --secondary: #88d3ce;
+    --accent: #ff416c;
+    --dark: #2d3436;
+    --light: #f5f6fa;
+    --impostor: #eb4d4b;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: var(--dark);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    text-align: center;
+}
+
+#game-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 500px;
+}
+
+h1 { font-size: 2rem; margin-bottom: 1.5rem; color: var(--primary); }
+
+.btn-main, .btn-join, .btn-start, .btn-vote, .btn-back {
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.3s;
+}
+
+.btn-main { background-color: var(--primary); color: white; }
+.btn-join { background-color: #2ecc71; color: white; }
+.btn-start { background-color: #f1c40f; color: var(--dark); }
+.btn-vote { background-color: var(--accent); color: white; }
+.btn-back { background-color: #95a5a6; color: white; }
+
+button:active { transform: scale(0.95); }
+
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.highlight {
+    color: var(--accent);
+    font-size: 2.5rem;
+    display: block;
+    letter-spacing: 5px;
+}
+
+#player-list {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+#player-list li {
+    background: #eee;
+    padding: 10px;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.card {
+    padding: 30px;
+    border: 4px dashed var(--primary);
+    border-radius: 15px;
+    margin-top: 20px;
+}
+
+.impostor-theme {
+    border-color: var(--impostor);
+    background-color: #fff5f5;
+    color: var(--impostor);
+}
+
+#candidates button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 10px;
+    background: white;
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    cursor: pointer;
+}
