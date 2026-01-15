@@ -12,32 +12,30 @@
         <h1>🕵️‍♂️ Impostor de Palabra</h1>
 
         <div id="start-menu">
-            <button onclick="beHost()" class="btn-main">CREAR SALA (HOST)</button>
-            <hr>
-            <button onclick="showJoinForm()" class="btn-main">UNIRSE A JUEGO</button>
+            <button onclick="beHost()" class="btn-main">HOST (Pantalla TV)</button>
+            <button onclick="showJoinForm()" class="btn-join">JOIN (Celular)</button>
         </div>
 
         <div id="join-form" style="display: none;">
-            <input type="text" id="roomCode" placeholder="CÓDIGO (4 letras)" maxlength="4">
+            <input type="text" id="roomCode" placeholder="CÓDIGO SALA">
             <input type="text" id="playerName" placeholder="TU NOMBRE">
             <button onclick="bePlayer()" class="btn-join">ENTRAR</button>
             <button onclick="location.reload()" class="btn-back">VOLVER</button>
         </div>
 
         <div id="host-lobby" style="display: none;">
-            <h2>CÓDIGO DE SALA: <span id="display-code" class="highlight">----</span></h2>
-            <h3>Jugadores en la sala:</h3>
+            <p>Código para unirse:</p>
+            <h2 id="display-code" class="highlight">----</h2>
             <ul id="player-list"></ul>
-            <button id="start-btn" onclick="startGame()" style="display: none;" class="btn-start">EMPEZAR JUEGO</button>
-            <button id="vote-btn" onclick="startVoting()" style="display: none;" class="btn-vote">VOTAR (ESTILO AMONG US)</button>
+            <button id="start-btn" onclick="startGame()" style="display: none;" class="btn-start">EMPEZAR</button>
+            <button id="vote-btn" onclick="startVoting()" style="display: none;" class="btn-vote">INICIAR VOTACIÓN</button>
         </div>
 
         <div id="player-game" style="display: none;">
             <div id="role-card" class="card">
-                <p>Tu palabra es:</p>
-                <h2 id="word-display">...</h2>
+                <h2 id="word-display">Esperando inicio...</h2>
             </div>
-            <div id="voting-area" style="display: none;">
+            <div id="voting-area" style="display: none; margin-top: 20px;">
                 <h3>¿Quién es el impostor?</h3>
                 <div id="candidates"></div>
             </div>
@@ -48,7 +46,6 @@
         const socket = io();
         let currentRoom = "";
 
-        // --- FUNCIONES DEL HOST ---
         function beHost() {
             document.getElementById('start-menu').style.display = 'none';
             document.getElementById('host-lobby').style.display = 'block';
@@ -62,29 +59,21 @@
 
         socket.on('updatePlayers', (players) => {
             const list = document.getElementById('player-list');
-            list.innerHTML = "";
-            players.forEach(p => {
-                const li = document.createElement('li');
-                li.innerText = p.name;
-                list.appendChild(li);
-            });
-            // Mostrar botón empezar si hay al menos 3 jugadores
-            if (players.length >= 3) {
-                document.getElementById('start-btn').style.display = 'block';
-            }
+            list.innerHTML = players.map(p => `<li>${p.name}</li>`).join('');
+            if (players.length >= 3) document.getElementById('start-btn').style.display = 'block';
         });
 
         function startGame() {
             socket.emit('startGame', currentRoom);
             document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('vote-btn').style.display = 'block';
         }
 
-        function startVoting() {
-            socket.emit('startVote', currentRoom);
-        }
+        socket.on('gameStarted', () => {
+            if (document.getElementById('host-lobby').style.display === 'block') {
+                document.getElementById('vote-btn').style.display = 'block';
+            }
+        });
 
-        // --- FUNCIONES DEL JUGADOR ---
         function showJoinForm() {
             document.getElementById('start-menu').style.display = 'none';
             document.getElementById('join-form').style.display = 'block';
@@ -102,15 +91,14 @@
         socket.on('joined', () => {
             document.getElementById('join-form').style.display = 'none';
             document.getElementById('player-game').style.display = 'block';
-            document.getElementById('word-display').innerText = "Esperando a que el host inicie...";
         });
 
         socket.on('receiveRole', (data) => {
             document.getElementById('word-display').innerText = data.msg;
-            if(data.role === 'impostor') {
-                document.getElementById('role-card').classList.add('impostor-theme');
-            }
+            if(data.role === 'impostor') document.getElementById('role-card').classList.add('impostor-theme');
         });
+
+        function startVoting() { socket.emit('startVote', currentRoom); }
 
         socket.on('votingStarted', (players) => {
             document.getElementById('voting-area').style.display = 'block';
@@ -121,10 +109,22 @@
                 btn.innerText = p.name;
                 btn.onclick = () => {
                     socket.emit('castVote', { code: currentRoom, targetId: p.id });
-                    area.innerHTML = "<h4>Voto enviado...</h4>";
+                    area.innerHTML = "Voto enviado...";
                 };
                 area.appendChild(btn);
             });
+        });
+
+        socket.on('votingResult', (data) => {
+            document.getElementById('voting-area').style.display = 'none';
+            document.getElementById('word-display').innerHTML = `<h3>${data.msg}</h3>`;
+            if (data.gameOver) {
+                const btn = document.createElement('button');
+                btn.innerText = "REINICIAR";
+                btn.onclick = () => location.reload();
+                btn.className = "btn-main";
+                document.getElementById('game-container').appendChild(btn);
+            }
         });
 
         socket.on('errorMsg', (msg) => alert(msg));
