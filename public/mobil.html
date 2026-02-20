@@ -8,17 +8,17 @@
 </head>
 <body>
 
-<input id="room" placeholder="Código sala">
+<input id="room" placeholder="Sala">
 <input id="name" placeholder="Nombre">
 <button onclick="join()">Entrar</button>
 
 <h2 id="role"></h2>
-
 <div id="vote"></div>
 
 <script>
 const socket=io();
 let room="";
+let myId=null;
 
 function join(){
  room=document.getElementById("room").value.toUpperCase();
@@ -32,7 +32,7 @@ socket.on("role",d=>{
 
 socket.on("players",list=>{
  let html="<h3>Vota:</h3>";
- list.forEach(p=>{
+ list.filter(p=>p.alive).forEach(p=>{
    html+=`<button onclick="vote('${p.id}')">${p.name}</button><br>`;
  });
  document.getElementById("vote").innerHTML=html;
