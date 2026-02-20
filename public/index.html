@@ -2,23 +2,35 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Impostor Final</title>
+<title>Impostor</title>
 <link rel="stylesheet" href="style.css">
 <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
+<div class="container">
+
 <h1>SALA <span id="room"></span></h1>
 
+<div class="card">
 <button onclick="startRound()">Iniciar Partida</button>
 <button onclick="startVoting()">Votación</button>
+</div>
 
-<h2 id="phase"></h2>
+<div class="card">
+<div class="phase" id="phase"></div>
+</div>
 
+<div class="card">
 <h3>Jugadores</h3>
 <div id="players"></div>
+</div>
 
+<div class="card">
 <h3 id="missing"></h3>
+</div>
+
+</div>
 
 <script>
 const socket=io();
@@ -32,17 +44,22 @@ socket.on("room",r=>{
 });
 
 socket.on("players",list=>{
- document.getElementById("players").innerHTML=
-  list.map(p=>`${p.name} ${p.alive?"":"(expulsado)"}`).join("<br>");
-});
-
-socket.on("missingVotes",names=>{
- document.getElementById("missing").innerText=
-   names.length ? "Faltan por votar: "+names.join(", ") : "";
+ document.getElementById("players").innerHTML =
+ list.map(p=>`
+   <div>
+     ${p.name}
+     ${p.alive ? "" : "<span class='badge dead'>expulsado</span>"}
+   </div>
+ `).join("");
 });
 
 socket.on("phase",p=>{
- document.getElementById("phase").innerText=p;
+ document.getElementById("phase").innerText="Fase: "+p;
+});
+
+socket.on("missingVotes",names=>{
+ document.getElementById("missing").innerText =
+ names.length ? "Faltan por votar: "+names.join(", ") : "";
 });
 
 socket.on("result",r=>{
