@@ -1,7 +1,7 @@
 {
-  "name": "impostor-fiesta",
+  "name": "impostor-fiesta-pro",
   "version": "1.0.0",
-  "description": "Juego impostor para fiestas",
+  "description": "Juego impostor fiesta pro",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
