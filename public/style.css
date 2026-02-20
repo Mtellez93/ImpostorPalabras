@@ -1,5 +1,5 @@
 body{
- background:#0e0e0e;
+ background:#111;
  color:white;
  font-family:sans-serif;
  text-align:center;
@@ -17,9 +17,4 @@ button,input{
 button{
  background:#27ae60;
  color:white;
- cursor:pointer;
-}
-
-button:hover{
- background:#2ecc71;
 }
