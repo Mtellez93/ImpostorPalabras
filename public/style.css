@@ -1,12 +1,12 @@
 body{
- background:#111;
+ background:#0e0e0e;
  color:white;
  font-family:sans-serif;
  text-align:center;
  padding:20px;
 }
 
-input,button{
+button,input{
  padding:12px;
  margin:8px;
  font-size:16px;
