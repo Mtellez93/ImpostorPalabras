@@ -9,7 +9,10 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, "public")));
 
-const WORDS = ["pizza","playa","doctor","guitarra","avion","cafe","perro","pelicula"];
+const WORDS = [
+  "pizza","playa","doctor","guitarra",
+  "avion","cafe","perro","pelicula"
+];
 
 let games = {};
 
@@ -18,7 +21,9 @@ function randomWord(){
 }
 
 function aliveIds(g){
-  return Object.entries(g.players).filter(([_,p])=>p.alive).map(([id])=>id);
+  return Object.entries(g.players)
+    .filter(([_,p])=>p.alive)
+    .map(([id])=>id);
 }
 
 function broadcastPlayers(room){
@@ -34,10 +39,29 @@ function broadcastPlayers(room){
 
 function broadcastMissingVotes(room){
   const g = games[room];
-  const missing = aliveIds(g).filter(id => !g.votes[id])
+  const missing = aliveIds(g)
+    .filter(id => !g.votes[id])
     .map(id => g.players[id].name);
 
   io.to(room).emit("missingVotes",missing);
+}
+
+function broadcastVoteCounts(room){
+  const g = games[room];
+  let counts = {};
+
+  Object.entries(g.players).forEach(([id,p])=>{
+    if(p.alive) counts[p.name]=0;
+  });
+
+  Object.values(g.votes).forEach(target=>{
+    const name = g.players[target].name;
+    if(counts[name] !== undefined){
+      counts[name]++;
+    }
+  });
+
+  io.to(room).emit("voteCounts", counts);
 }
 
 function checkVictory(room){
@@ -49,7 +73,7 @@ function checkVictory(room){
     return true;
   }
 
-  if(alive.length<=2){
+  if(alive.length <= 2){
     io.to(room).emit("victory","impostor");
     return true;
   }
@@ -85,6 +109,7 @@ function startVoting(room){
   g.votes={};
 
   broadcastPlayers(room);
+  broadcastVoteCounts(room);
   broadcastMissingVotes(room);
 
   io.to(room).emit("phase","voting");
@@ -92,27 +117,39 @@ function startVoting(room){
 
 function finishVoting(room){
   const g = games[room];
-  let tally={};
+  let tally = {};
 
   Object.values(g.votes).forEach(v=>{
     tally[v]=(tally[v]||0)+1;
   });
 
-  let max=0,elim=null;
+  let max = 0;
+  let elim = null;
+  let tie = false;
+
   for(let id in tally){
-    if(tally[id]>max){
-      max=tally[id];
-      elim=id;
+    if(tally[id] > max){
+      max = tally[id];
+      elim = id;
+      tie = false;
+    } else if(tally[id] === max){
+      tie = true;
     }
   }
 
-  if(elim){
-    g.players[elim].alive=false;
-    io.to(room).emit("result",{
-      name:g.players[elim].name,
-      wasImpostor: elim===g.impostor
-    });
+  if(tie || !elim){
+    io.to(room).emit("result",{tie:true});
+    g.phase="discussion";
+    io.to(room).emit("phase","discussion");
+    return;
   }
+
+  g.players[elim].alive = false;
+
+  io.to(room).emit("result",{
+    name:g.players[elim].name,
+    wasImpostor: elim===g.impostor
+  });
 
   broadcastPlayers(room);
 
@@ -153,6 +190,7 @@ io.on("connection",socket=>{
 
     g.votes[socket.id]=target;
 
+    broadcastVoteCounts(room);
     broadcastMissingVotes(room);
 
     if(Object.keys(g.votes).length===aliveIds(g).length){
@@ -162,4 +200,6 @@ io.on("connection",socket=>{
 
 });
 
-server.listen(process.env.PORT||3000,()=>console.log("Servidor listo"));
+server.listen(process.env.PORT||3000,()=>{
+  console.log("Servidor listo");
+});
