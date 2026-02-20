@@ -22,28 +22,19 @@ let room="";
 
 function join(){
  room=document.getElementById("room").value.toUpperCase();
-
- socket.emit("join",{
-  room,
-  name:document.getElementById("name").value
- });
+ socket.emit("join",{room,name:document.getElementById("name").value});
 }
 
 socket.on("role",d=>{
- if(d.impostor){
-  document.getElementById("role").innerText="Eres el impostor 😈";
- } else {
-  document.getElementById("role").innerText="Palabra: "+d.word;
- }
+ document.getElementById("role").innerText=
+   d.impostor ? "Eres impostor 😈" : "Palabra: "+d.word;
 });
 
-socket.on("playerList",list=>{
+socket.on("players",list=>{
  let html="<h3>Vota:</h3>";
-
- for(let id in list){
-  html+=`<button onclick="vote('${id}')">${list[id].name}</button><br>`;
- }
-
+ list.forEach(p=>{
+   html+=`<button onclick="vote('${p.id}')">${p.name}</button><br>`;
+ });
  document.getElementById("vote").innerHTML=html;
 });
 
