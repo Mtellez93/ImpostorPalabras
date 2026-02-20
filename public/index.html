@@ -27,7 +27,13 @@
 </div>
 
 <div class="card">
-<h3 id="missing"></h3>
+<h3>Faltan por votar</h3>
+<div id="missing"></div>
+</div>
+
+<div class="card">
+<h3>Conteo de votos</h3>
+<div id="voteCounts"></div>
 </div>
 
 </div>
@@ -59,10 +65,21 @@ socket.on("phase",p=>{
 
 socket.on("missingVotes",names=>{
  document.getElementById("missing").innerText =
- names.length ? "Faltan por votar: "+names.join(", ") : "";
+ names.length ? names.join(", ") : "Nadie";
+});
+
+socket.on("voteCounts",counts=>{
+ document.getElementById("voteCounts").innerHTML =
+   Object.entries(counts)
+     .map(([name,count])=>`${name}: ${count}`)
+     .join("<br>");
 });
 
 socket.on("result",r=>{
+ if(r.tie){
+   alert("Empate — nadie expulsado 🤝");
+   return;
+ }
  alert(`${r.name} ${r.wasImpostor?"ERA":"NO ERA"} el impostor`);
 });
 
