@@ -17,6 +17,10 @@ function randomWord(){
   return WORDS[Math.floor(Math.random()*WORDS.length)];
 }
 
+function aliveIds(g){
+  return Object.entries(g.players).filter(([_,p])=>p.alive).map(([id])=>id);
+}
+
 function broadcastPlayers(room){
   const g = games[room];
   io.to(room).emit("players",
@@ -28,23 +32,46 @@ function broadcastPlayers(room){
   );
 }
 
+function broadcastMissingVotes(room){
+  const g = games[room];
+  const missing = aliveIds(g).filter(id => !g.votes[id])
+    .map(id => g.players[id].name);
+
+  io.to(room).emit("missingVotes",missing);
+}
+
+function checkVictory(room){
+  const g = games[room];
+  const alive = aliveIds(g);
+
+  if(!alive.includes(g.impostor)){
+    io.to(room).emit("victory","civiles");
+    return true;
+  }
+
+  if(alive.length<=2){
+    io.to(room).emit("victory","impostor");
+    return true;
+  }
+
+  return false;
+}
+
 function startRound(room){
   const g = games[room];
-
   const ids = Object.keys(g.players);
 
   g.word = randomWord();
   g.impostor = ids[Math.floor(Math.random()*ids.length)];
-  g.votes = {};
   g.phase = "discussion";
+  g.votes = {};
 
-  // revivir todos
   ids.forEach(id => g.players[id].alive = true);
 
   ids.forEach(id=>{
     io.to(id).emit("role",{
-      word: id===g.impostor ? null : g.word,
-      impostor: id===g.impostor
+      word:id===g.impostor?null:g.word,
+      impostor:id===g.impostor
     });
   });
 
@@ -54,43 +81,45 @@ function startRound(room){
 
 function startVoting(room){
   const g = games[room];
-  g.votes = {};
-  g.phase = "voting";
+  g.phase="voting";
+  g.votes={};
 
   broadcastPlayers(room);
+  broadcastMissingVotes(room);
+
   io.to(room).emit("phase","voting");
 }
 
 function finishVoting(room){
   const g = games[room];
+  let tally={};
 
-  let tally = {};
-
-  Object.entries(g.votes).forEach(([voter,target])=>{
-    tally[target]=(tally[target]||0)+1;
+  Object.values(g.votes).forEach(v=>{
+    tally[v]=(tally[v]||0)+1;
   });
 
-  let max=0;
-  let eliminated=null;
-
+  let max=0,elim=null;
   for(let id in tally){
     if(tally[id]>max){
       max=tally[id];
-      eliminated=id;
+      elim=id;
     }
   }
 
-  if(eliminated){
-    g.players[eliminated].alive=false;
-
+  if(elim){
+    g.players[elim].alive=false;
     io.to(room).emit("result",{
-      name:g.players[eliminated].name,
-      wasImpostor: eliminated===g.impostor
+      name:g.players[elim].name,
+      wasImpostor: elim===g.impostor
     });
   }
 
   broadcastPlayers(room);
+
+  if(checkVictory(room)) return;
+
   g.phase="discussion";
+  io.to(room).emit("phase","discussion");
 }
 
 io.on("connection",socket=>{
@@ -113,7 +142,6 @@ io.on("connection",socket=>{
   });
 
   socket.on("startRound",room=>startRound(room));
-
   socket.on("startVoting",room=>startVoting(room));
 
   socket.on("vote",({room,target})=>{
@@ -125,9 +153,9 @@ io.on("connection",socket=>{
 
     g.votes[socket.id]=target;
 
-    const aliveCount=Object.values(g.players).filter(p=>p.alive).length;
+    broadcastMissingVotes(room);
 
-    if(Object.keys(g.votes).length===aliveCount){
+    if(Object.keys(g.votes).length===aliveIds(g).length){
       finishVoting(room);
     }
   });
