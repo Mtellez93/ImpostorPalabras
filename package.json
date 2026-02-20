@@ -1,7 +1,7 @@
 {
-  "name": "impostor-palabras",
+  "name": "impostor-fiesta",
   "version": "1.0.0",
-  "description": "Juego impostor de palabras",
+  "description": "Juego impostor fiesta",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
