@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Impostor</title>
+<link rel="stylesheet" href="style.css">
+<script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<h1>SALA: <span id="room">----</span></h1>
+
+<button onclick="start()">Iniciar juego</button>
+
+<h2>Jugadores</h2>
+<div id="players"></div>
+
+<script>
+const socket = io();
+let roomCode="";
+
+socket.emit("create");
+
+socket.on("room", r=>{
+  roomCode=r;
+  document.getElementById("room").innerText=r;
+});
+
+socket.on("players", list=>{
+  document.getElementById("players").innerHTML =
+    list.map(p=>p.name).join("<br>");
+});
+
+function start(){
+  socket.emit("start", roomCode);
+}
+</script>
+
+</body>
+</html>
