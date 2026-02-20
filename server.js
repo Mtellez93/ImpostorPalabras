@@ -9,7 +9,10 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, "public")));
 
-const WORDS = ["pizza","playa","doctor","guitarra","avion","cafe","perro"];
+const WORDS = [
+  "pizza","playa","doctor","guitarra",
+  "avion","cafe","perro","pelicula"
+];
 
 let games = {};
 
@@ -18,18 +21,18 @@ function randomWord(){
 }
 
 function startRound(room){
-  const g = games[room];
+  const game = games[room];
 
-  g.word = randomWord();
-  const ids = Object.keys(g.players);
-  g.impostor = ids[Math.floor(Math.random()*ids.length)];
-  g.votes = {};
-  g.phase = "discussion";
+  const ids = Object.keys(game.players);
+  game.word = randomWord();
+  game.impostor = ids[Math.floor(Math.random()*ids.length)];
+  game.votes = {};
+  game.phase = "discussion";
 
   ids.forEach(id=>{
     io.to(id).emit("role",{
-      word: id===g.impostor?null:g.word,
-      impostor: id===g.impostor
+      word: id===game.impostor ? null : game.word,
+      impostor: id===game.impostor
     });
   });
 
@@ -37,42 +40,58 @@ function startRound(room){
 }
 
 function finishVoting(room){
-  const g = games[room];
-  let tally={};
+  const game = games[room];
 
-  Object.values(g.votes).forEach(v=>{
-    tally[v]=(tally[v]||0)+1;
+  let tally = {};
+
+  Object.values(game.votes).forEach(v=>{
+    tally[v] = (tally[v]||0)+1;
   });
 
-  let max=0,elim=null;
-  for(let k in tally){
-    if(tally[k]>max){max=tally[k]; elim=k;}
+  let max=0;
+  let eliminated=null;
+
+  for(let id in tally){
+    if(tally[id]>max){
+      max=tally[id];
+      eliminated=id;
+    }
   }
 
-  if(elim){
-    io.to(room).emit("elim", g.players[elim].name);
+  if(eliminated){
+    io.to(room).emit("result",{
+      name: game.players[eliminated].name,
+      wasImpostor: eliminated===game.impostor
+    });
   } else {
-    io.to(room).emit("elim","Nadie");
+    io.to(room).emit("result",{name:"Nadie",wasImpostor:false});
   }
 
-  g.phase="discussion";
+  game.phase="discussion";
 }
 
 io.on("connection",socket=>{
 
   socket.on("create",()=>{
     const room=Math.random().toString(36).substring(2,6).toUpperCase();
-    games[room]={players:{}, phase:"lobby"};
+
+    games[room]={
+      players:{},
+      phase:"lobby"
+    };
+
     socket.join(room);
     socket.emit("room",room);
   });
 
   socket.on("join",({room,name})=>{
-    const g=games[room];
-    if(!g) return;
-    g.players[socket.id]={name};
+    const game=games[room];
+    if(!game) return;
+
+    game.players[socket.id]={name};
     socket.join(room);
-    io.to(room).emit("players",Object.values(g.players));
+
+    io.to(room).emit("players",Object.values(game.players));
   });
 
   socket.on("start",room=>{
@@ -80,23 +99,29 @@ io.on("connection",socket=>{
   });
 
   socket.on("startVoting",room=>{
-    const g=games[room];
-    g.phase="voting";
-    g.votes={};
+    const game=games[room];
+    if(!game) return;
+
+    game.votes={};
+    game.phase="voting";
 
     io.to(room).emit("phase","voting");
-    io.to(room).emit("playerList",g.players);
+    io.to(room).emit("playerList",game.players);
   });
 
   socket.on("vote",({room,target})=>{
-    const g=games[room];
-    g.votes[socket.id]=target;
+    const game=games[room];
+    if(!game) return;
 
-    if(Object.keys(g.votes).length===Object.keys(g.players).length){
+    game.votes[socket.id]=target;
+
+    if(Object.keys(game.votes).length===Object.keys(game.players).length){
       finishVoting(room);
     }
   });
 
 });
 
-server.listen(process.env.PORT||3000);
+server.listen(process.env.PORT||3000,()=>{
+  console.log("Servidor listo");
+});
