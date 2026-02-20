@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Impostor</title>
+<title>Impostor Final</title>
 <link rel="stylesheet" href="style.css">
 <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -18,6 +18,8 @@
 <h3>Jugadores</h3>
 <div id="players"></div>
 
+<h3 id="missing"></h3>
+
 <script>
 const socket=io();
 let room="";
@@ -31,7 +33,12 @@ socket.on("room",r=>{
 
 socket.on("players",list=>{
  document.getElementById("players").innerHTML=
-   list.map(p=>`${p.name} ${p.alive?"":"(expulsado)"}`).join("<br>");
+  list.map(p=>`${p.name} ${p.alive?"":"(expulsado)"}`).join("<br>");
+});
+
+socket.on("missingVotes",names=>{
+ document.getElementById("missing").innerText=
+   names.length ? "Faltan por votar: "+names.join(", ") : "";
 });
 
 socket.on("phase",p=>{
@@ -40,6 +47,10 @@ socket.on("phase",p=>{
 
 socket.on("result",r=>{
  alert(`${r.name} ${r.wasImpostor?"ERA":"NO ERA"} el impostor`);
+});
+
+socket.on("victory",v=>{
+ alert(v==="civiles" ? "Ganaron los civiles 🎉" : "Ganó el impostor 😈");
 });
 
 function startRound(){ socket.emit("startRound",room); }
