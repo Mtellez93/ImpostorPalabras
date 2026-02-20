@@ -1,25 +1,20 @@
-body {
-  background: #121212;
-  color: white;
-  font-family: Arial, sans-serif;
-  text-align: center;
-  padding: 20px;
+body{
+ background:#111;
+ color:white;
+ font-family:sans-serif;
+ text-align:center;
+ padding:20px;
 }
 
-input, button {
-  padding: 12px;
-  margin: 8px;
-  font-size: 16px;
-  border-radius: 8px;
-  border: none;
+input,button{
+ padding:12px;
+ margin:8px;
+ font-size:16px;
+ border-radius:8px;
+ border:none;
 }
 
-button {
-  background: #27ae60;
-  color: white;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #2ecc71;
+button{
+ background:#27ae60;
+ color:white;
 }
