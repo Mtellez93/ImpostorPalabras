@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<input id="room" placeholder="Sala">
+<input id="room" placeholder="Código sala">
 <input id="name" placeholder="Nombre">
 <button onclick="join()">Entrar</button>
 
@@ -18,27 +18,39 @@
 
 <script>
 const socket=io();
+let room="";
 
 function join(){
+ room=document.getElementById("room").value.toUpperCase();
+
  socket.emit("join",{
-  room:document.getElementById("room").value.toUpperCase(),
+  room,
   name:document.getElementById("name").value
  });
 }
 
 socket.on("role",d=>{
  if(d.impostor){
-  document.getElementById("role").innerText="Eres impostor 😈";
+  document.getElementById("role").innerText="Eres el impostor 😈";
  } else {
-  document.getElementById("role").innerText="Palabra "+d.word;
+  document.getElementById("role").innerText="Palabra: "+d.word;
  }
 });
 
-socket.on("phase",p=>{
- if(p==="voting"){
-  document.getElementById("vote").innerHTML="Votación abierta";
+socket.on("playerList",list=>{
+ let html="<h3>Vota:</h3>";
+
+ for(let id in list){
+  html+=`<button onclick="vote('${id}')">${list[id].name}</button><br>`;
  }
+
+ document.getElementById("vote").innerHTML=html;
 });
+
+function vote(target){
+ socket.emit("vote",{room,target});
+ document.getElementById("vote").innerHTML="Voto enviado ✔️";
+}
 </script>
 
 </body>
