@@ -18,7 +18,6 @@
 <script>
 const socket=io();
 let room="";
-let myId=null;
 
 function join(){
  room=document.getElementById("room").value.toUpperCase();
@@ -27,15 +26,25 @@ function join(){
 
 socket.on("role",d=>{
  document.getElementById("role").innerText=
-   d.impostor ? "Eres impostor 😈" : "Palabra: "+d.word;
+  d.impostor ? "Eres impostor 😈" : "Palabra: "+d.word;
+});
+
+socket.on("phase",p=>{
+ if(p!=="voting"){
+   document.getElementById("vote").innerHTML="";
+ }
 });
 
 socket.on("players",list=>{
- let html="<h3>Vota:</h3>";
- list.filter(p=>p.alive).forEach(p=>{
-   html+=`<button onclick="vote('${p.id}')">${p.name}</button><br>`;
+ socket.on("phase",phase=>{
+  if(phase==="voting"){
+   let html="<h3>Vota:</h3>";
+   list.filter(p=>p.alive).forEach(p=>{
+     html+=`<button onclick="vote('${p.id}')">${p.name}</button><br>`;
+   });
+   document.getElementById("vote").innerHTML=html;
+  }
  });
- document.getElementById("vote").innerHTML=html;
 });
 
 function vote(target){
