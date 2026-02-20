@@ -20,32 +20,59 @@ function randomWord(){
   return WORDS[Math.floor(Math.random()*WORDS.length)];
 }
 
-function startRound(room){
-  const game = games[room];
+function broadcastPlayers(room){
+  const g = games[room];
+  io.to(room).emit("players",
+    Object.entries(g.players).map(([id,p])=>({
+      id,
+      name:p.name
+    }))
+  );
+}
 
-  const ids = Object.keys(game.players);
-  game.word = randomWord();
-  game.impostor = ids[Math.floor(Math.random()*ids.length)];
-  game.votes = {};
-  game.phase = "discussion";
+function startRound(room){
+  const g = games[room];
+
+  const ids = Object.keys(g.players);
+  g.word = randomWord();
+  g.impostor = ids[Math.floor(Math.random()*ids.length)];
+  g.votes = {};
+  g.phase = "discussion";
 
   ids.forEach(id=>{
     io.to(id).emit("role",{
-      word: id===game.impostor ? null : game.word,
-      impostor: id===game.impostor
+      word: id===g.impostor ? null : g.word,
+      impostor: id===g.impostor
     });
   });
 
   io.to(room).emit("phase","discussion");
 }
 
-function finishVoting(room){
-  const game = games[room];
+function startVoting(room){
+  const g = games[room];
+  g.phase = "voting";
+  g.votes = {};
 
+  io.to(room).emit("phase","voting");
+  broadcastPlayers(room);
+  updateVoteStatus(room);
+}
+
+function updateVoteStatus(room){
+  const g = games[room];
+  const voted = Object.keys(g.votes);
+  const total = Object.keys(g.players).length;
+
+  io.to(room).emit("voteStatus",{ votedCount:voted.length, total });
+}
+
+function finishVoting(room){
+  const g = games[room];
   let tally = {};
 
-  Object.values(game.votes).forEach(v=>{
-    tally[v] = (tally[v]||0)+1;
+  Object.values(g.votes).forEach(v=>{
+    tally[v]=(tally[v]||0)+1;
   });
 
   let max=0;
@@ -60,68 +87,50 @@ function finishVoting(room){
 
   if(eliminated){
     io.to(room).emit("result",{
-      name: game.players[eliminated].name,
-      wasImpostor: eliminated===game.impostor
+      name:g.players[eliminated].name,
+      wasImpostor: eliminated===g.impostor
     });
   } else {
     io.to(room).emit("result",{name:"Nadie",wasImpostor:false});
   }
 
-  game.phase="discussion";
+  g.phase="discussion";
 }
 
 io.on("connection",socket=>{
 
   socket.on("create",()=>{
     const room=Math.random().toString(36).substring(2,6).toUpperCase();
-
-    games[room]={
-      players:{},
-      phase:"lobby"
-    };
-
+    games[room]={players:{},phase:"lobby"};
     socket.join(room);
     socket.emit("room",room);
   });
 
   socket.on("join",({room,name})=>{
-    const game=games[room];
-    if(!game) return;
+    const g=games[room];
+    if(!g) return;
 
-    game.players[socket.id]={name};
+    g.players[socket.id]={name};
     socket.join(room);
 
-    io.to(room).emit("players",Object.values(game.players));
+    broadcastPlayers(room);
   });
 
-  socket.on("start",room=>{
-    startRound(room);
-  });
+  socket.on("startRound",room=>startRound(room));
 
-  socket.on("startVoting",room=>{
-    const game=games[room];
-    if(!game) return;
-
-    game.votes={};
-    game.phase="voting";
-
-    io.to(room).emit("phase","voting");
-    io.to(room).emit("playerList",game.players);
-  });
+  socket.on("startVoting",room=>startVoting(room));
 
   socket.on("vote",({room,target})=>{
-    const game=games[room];
-    if(!game) return;
+    const g=games[room];
+    if(!g) return;
 
-    game.votes[socket.id]=target;
+    g.votes[socket.id]=target;
+    updateVoteStatus(room);
 
-    if(Object.keys(game.votes).length===Object.keys(game.players).length){
+    if(Object.keys(g.votes).length===Object.keys(g.players).length){
       finishVoting(room);
     }
   });
 
 });
-
-server.listen(process.env.PORT||3000,()=>{
-  console.log("Servidor listo");
-});
+server.listen(process.env.PORT||3000,()=>console.log("Fiesta Pro listo"));
