@@ -2,26 +2,21 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Impostor Fiesta Pro</title>
+<title>Impostor</title>
 <link rel="stylesheet" href="style.css">
 <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-<h1>SALA <span id="room">----</span></h1>
-
-<div id="qr"></div>
+<h1>SALA <span id="room"></span></h1>
 
 <button onclick="startRound()">Iniciar ronda</button>
 <button onclick="startVoting()">Iniciar votación</button>
-<button onclick="nextRound()">Siguiente ronda</button>
 
 <h2 id="phase"></h2>
 
 <h3>Jugadores</h3>
 <div id="players"></div>
-
-<h3 id="voteStatus"></h3>
 
 <script>
 const socket=io();
@@ -32,39 +27,23 @@ socket.emit("create");
 socket.on("room",r=>{
  room=r;
  document.getElementById("room").innerText=r;
-
- const url=location.origin+"/mobil.html";
- const qr=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${url}`;
- document.getElementById("qr").innerHTML=`<img src="${qr}">`;
 });
 
 socket.on("players",list=>{
- document.getElementById("players").innerHTML=list.map(p=>p.name).join("<br>");
+ document.getElementById("players").innerHTML=
+   list.map(p=>`${p.name} ${p.alive?"":"(expulsado)"}`).join("<br>");
 });
 
 socket.on("phase",p=>{
  document.getElementById("phase").innerText=p;
 });
 
-socket.on("voteStatus",s=>{
- document.getElementById("voteStatus").innerText=`Votos: ${s.votedCount}/${s.total}`;
-});
-
 socket.on("result",r=>{
  alert(`${r.name} ${r.wasImpostor?"ERA":"NO ERA"} el impostor`);
 });
 
-function startRound(){
- socket.emit("startRound",room);
-}
-
-function startVoting(){
- socket.emit("startVoting",room);
-}
-
-function nextRound(){
- socket.emit("startRound",room);
-}
+function startRound(){ socket.emit("startRound",room); }
+function startVoting(){ socket.emit("startVoting",room); }
 </script>
 
 </body>
