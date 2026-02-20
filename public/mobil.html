@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Jugador</title>
+<link rel="stylesheet" href="style.css">
+<script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<input id="room" placeholder="Código sala">
+<input id="name" placeholder="Nombre">
+<button onclick="join()">Entrar</button>
+
+<h2 id="role"></h2>
+
+<script>
+const socket = io();
+
+function join(){
+  socket.emit("join", {
+    room: document.getElementById("room").value.toUpperCase(),
+    name: document.getElementById("name").value
+  });
+}
+
+socket.on("role", data=>{
+  if(data.impostor){
+    document.getElementById("role").innerText="Eres el impostor 😈";
+  } else {
+    document.getElementById("role").innerText="Palabra: "+data.word;
+  }
+});
+</script>
+
+</body>
+</html>
