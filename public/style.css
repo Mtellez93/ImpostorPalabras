@@ -1,20 +1,72 @@
-body{
- background:#111;
- color:white;
- font-family:sans-serif;
- text-align:center;
- padding:20px;
+body {
+  margin:0;
+  background: radial-gradient(circle at top, #1b1b2f, #0f0f1a);
+  color:white;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
-button,input{
- padding:12px;
- margin:8px;
- font-size:16px;
- border-radius:8px;
- border:none;
+.container {
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+  text-align:center;
 }
 
-button{
- background:#27ae60;
- color:white;
+.card {
+  background: rgba(255,255,255,0.05);
+  border-radius:16px;
+  padding:20px;
+  margin:15px 0;
+  box-shadow:0 10px 30px rgba(0,0,0,0.4);
+}
+
+h1 {
+  font-size:3rem;
+  letter-spacing:2px;
+}
+
+button {
+  background: linear-gradient(135deg,#27ae60,#2ecc71);
+  border:none;
+  color:white;
+  padding:14px 20px;
+  border-radius:12px;
+  font-size:16px;
+  cursor:pointer;
+  margin:8px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow:0 6px 20px rgba(0,0,0,0.4);
+}
+
+.badge {
+  display:inline-block;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#444;
+  margin-left:8px;
+  font-size:12px;
+}
+
+.badge.dead {
+  background:#c0392b;
+}
+
+.phase {
+  font-size:1.3rem;
+  margin:10px 0;
+  opacity:0.85;
+}
+
+.vote-list button {
+  width:100%;
+  margin:6px 0;
+}
+
+.role-card {
+  font-size:2rem;
+  padding:30px;
 }
