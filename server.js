@@ -11,22 +11,20 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const WORDS = ["pizza","playa","doctor","guitarra","avion","cafe","perro"];
 
-const DISCUSSION = 60;
-const VOTING = 20;
-
 let games = {};
 
-function word(){
+function randomWord(){
   return WORDS[Math.floor(Math.random()*WORDS.length)];
 }
 
 function startRound(room){
   const g = games[room];
-  g.word = word();
+
+  g.word = randomWord();
   const ids = Object.keys(g.players);
-  g.alive = ids;
   g.impostor = ids[Math.floor(Math.random()*ids.length)];
   g.votes = {};
+  g.phase = "discussion";
 
   ids.forEach(id=>{
     io.to(id).emit("role",{
@@ -36,12 +34,6 @@ function startRound(room){
   });
 
   io.to(room).emit("phase","discussion");
-  timer(room,DISCUSSION,()=>startVoting(room));
-}
-
-function startVoting(room){
-  io.to(room).emit("phase","voting");
-  timer(room,VOTING,()=>finishVoting(room));
 }
 
 function finishVoting(room){
@@ -62,22 +54,15 @@ function finishVoting(room){
   } else {
     io.to(room).emit("elim","Nadie");
   }
-}
 
-function timer(room,sec,done){
-  let t=sec;
-  const i=setInterval(()=>{
-    io.to(room).emit("timer",t);
-    t--;
-    if(t<0){clearInterval(i); done();}
-  },1000);
+  g.phase="discussion";
 }
 
 io.on("connection",socket=>{
 
   socket.on("create",()=>{
     const room=Math.random().toString(36).substring(2,6).toUpperCase();
-    games[room]={players:{}};
+    games[room]={players:{}, phase:"lobby"};
     socket.join(room);
     socket.emit("room",room);
   });
@@ -90,11 +75,26 @@ io.on("connection",socket=>{
     io.to(room).emit("players",Object.values(g.players));
   });
 
-  socket.on("start",room=>startRound(room));
+  socket.on("start",room=>{
+    startRound(room);
+  });
+
+  socket.on("startVoting",room=>{
+    const g=games[room];
+    g.phase="voting";
+    g.votes={};
+
+    io.to(room).emit("phase","voting");
+    io.to(room).emit("playerList",g.players);
+  });
 
   socket.on("vote",({room,target})=>{
     const g=games[room];
     g.votes[socket.id]=target;
+
+    if(Object.keys(g.votes).length===Object.keys(g.players).length){
+      finishVoting(room);
+    }
   });
 
 });
