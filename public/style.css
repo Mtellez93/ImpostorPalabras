@@ -17,4 +17,9 @@ input,button{
 button{
  background:#27ae60;
  color:white;
+ cursor:pointer;
+}
+
+button:hover{
+ background:#2ecc71;
 }
