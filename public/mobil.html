@@ -8,12 +8,19 @@
 </head>
 <body>
 
-<input id="room" placeholder="Sala">
+<div class="container">
+
+<div class="card">
+<input id="room" placeholder="Código sala">
 <input id="name" placeholder="Nombre">
 <button onclick="join()">Entrar</button>
+</div>
 
-<h2 id="role"></h2>
-<div id="vote"></div>
+<div class="card role-card" id="role"></div>
+
+<div class="card vote-list" id="vote"></div>
+
+</div>
 
 <script>
 const socket=io();
@@ -25,31 +32,28 @@ function join(){
 }
 
 socket.on("role",d=>{
- document.getElementById("role").innerText=
-  d.impostor ? "Eres impostor 😈" : "Palabra: "+d.word;
+ document.getElementById("role").innerText =
+ d.impostor ? "😈 Eres el impostor" : "📝 "+d.word;
 });
 
 socket.on("phase",p=>{
- if(p!=="voting"){
-   document.getElementById("vote").innerHTML="";
- }
+ if(p!=="voting") document.getElementById("vote").innerHTML="";
 });
 
 socket.on("players",list=>{
  socket.on("phase",phase=>{
   if(phase==="voting"){
-   let html="<h3>Vota:</h3>";
-   list.filter(p=>p.alive).forEach(p=>{
-     html+=`<button onclick="vote('${p.id}')">${p.name}</button><br>`;
-   });
-   document.getElementById("vote").innerHTML=html;
+   document.getElementById("vote").innerHTML =
+   list.filter(p=>p.alive).map(p=>
+     `<button onclick="vote('${p.id}')">${p.name}</button>`
+   ).join("");
   }
  });
 });
 
 function vote(target){
  socket.emit("vote",{room,target});
- document.getElementById("vote").innerHTML="Voto enviado ✔️";
+ document.getElementById("vote").innerHTML="✔️ Voto enviado";
 }
 </script>
 
