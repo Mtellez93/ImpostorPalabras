@@ -2,37 +2,45 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Impostor</title>
+<title>Impostor Fiesta</title>
 <link rel="stylesheet" href="style.css">
 <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-<h1>SALA: <span id="room">----</span></h1>
+<h1>SALA <span id="room"></span></h1>
+<h2 id="phase"></h2>
+<h3 id="timer"></h3>
 
-<button onclick="start()">Iniciar juego</button>
+<button onclick="start()">Iniciar</button>
 
-<h2>Jugadores</h2>
 <div id="players"></div>
 
 <script>
-const socket = io();
-let roomCode="";
+const socket=io();
+let room="";
 
 socket.emit("create");
 
-socket.on("room", r=>{
-  roomCode=r;
-  document.getElementById("room").innerText=r;
+socket.on("room",r=>{
+ room=r;
+ document.getElementById("room").innerText=r;
 });
 
-socket.on("players", list=>{
-  document.getElementById("players").innerHTML =
-    list.map(p=>p.name).join("<br>");
+socket.on("players",list=>{
+ document.getElementById("players").innerHTML=list.map(p=>p.name).join("<br>");
+});
+
+socket.on("phase",p=>{
+ document.getElementById("phase").innerText=p;
+});
+
+socket.on("timer",t=>{
+ document.getElementById("timer").innerText=t+"s";
 });
 
 function start(){
-  socket.emit("start", roomCode);
+ socket.emit("start",room);
 }
 </script>
 
