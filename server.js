@@ -9,10 +9,7 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, "public")));
 
-const WORDS = [
-  "pizza","playa","doctor","guitarra",
-  "avion","cafe","perro","pelicula"
-];
+const WORDS = ["pizza","playa","doctor","guitarra","avion","cafe","perro","pelicula"];
 
 let games = {};
 
@@ -25,7 +22,8 @@ function broadcastPlayers(room){
   io.to(room).emit("players",
     Object.entries(g.players).map(([id,p])=>({
       id,
-      name:p.name
+      name:p.name,
+      alive:p.alive
     }))
   );
 }
@@ -34,10 +32,14 @@ function startRound(room){
   const g = games[room];
 
   const ids = Object.keys(g.players);
+
   g.word = randomWord();
   g.impostor = ids[Math.floor(Math.random()*ids.length)];
   g.votes = {};
   g.phase = "discussion";
+
+  // revivir todos
+  ids.forEach(id => g.players[id].alive = true);
 
   ids.forEach(id=>{
     io.to(id).emit("role",{
@@ -46,33 +48,26 @@ function startRound(room){
     });
   });
 
+  broadcastPlayers(room);
   io.to(room).emit("phase","discussion");
 }
 
 function startVoting(room){
   const g = games[room];
-  g.phase = "voting";
   g.votes = {};
+  g.phase = "voting";
 
-  io.to(room).emit("phase","voting");
   broadcastPlayers(room);
-  updateVoteStatus(room);
-}
-
-function updateVoteStatus(room){
-  const g = games[room];
-  const voted = Object.keys(g.votes);
-  const total = Object.keys(g.players).length;
-
-  io.to(room).emit("voteStatus",{ votedCount:voted.length, total });
+  io.to(room).emit("phase","voting");
 }
 
 function finishVoting(room){
   const g = games[room];
+
   let tally = {};
 
-  Object.values(g.votes).forEach(v=>{
-    tally[v]=(tally[v]||0)+1;
+  Object.entries(g.votes).forEach(([voter,target])=>{
+    tally[target]=(tally[target]||0)+1;
   });
 
   let max=0;
@@ -86,14 +81,15 @@ function finishVoting(room){
   }
 
   if(eliminated){
+    g.players[eliminated].alive=false;
+
     io.to(room).emit("result",{
       name:g.players[eliminated].name,
       wasImpostor: eliminated===g.impostor
     });
-  } else {
-    io.to(room).emit("result",{name:"Nadie",wasImpostor:false});
   }
 
+  broadcastPlayers(room);
   g.phase="discussion";
 }
 
@@ -101,7 +97,7 @@ io.on("connection",socket=>{
 
   socket.on("create",()=>{
     const room=Math.random().toString(36).substring(2,6).toUpperCase();
-    games[room]={players:{},phase:"lobby"};
+    games[room]={players:{}};
     socket.join(room);
     socket.emit("room",room);
   });
@@ -110,7 +106,7 @@ io.on("connection",socket=>{
     const g=games[room];
     if(!g) return;
 
-    g.players[socket.id]={name};
+    g.players[socket.id]={name,alive:true};
     socket.join(room);
 
     broadcastPlayers(room);
@@ -124,13 +120,18 @@ io.on("connection",socket=>{
     const g=games[room];
     if(!g) return;
 
-    g.votes[socket.id]=target;
-    updateVoteStatus(room);
+    const player=g.players[socket.id];
+    if(!player || !player.alive) return;
 
-    if(Object.keys(g.votes).length===Object.keys(g.players).length){
+    g.votes[socket.id]=target;
+
+    const aliveCount=Object.values(g.players).filter(p=>p.alive).length;
+
+    if(Object.keys(g.votes).length===aliveCount){
       finishVoting(room);
     }
   });
 
 });
-server.listen(process.env.PORT||3000,()=>console.log("Fiesta Pro listo"));
+
+server.listen(process.env.PORT||3000,()=>console.log("Servidor listo"));
