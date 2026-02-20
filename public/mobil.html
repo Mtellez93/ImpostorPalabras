@@ -17,7 +17,6 @@
 </div>
 
 <div class="card role-card" id="role"></div>
-
 <div class="card vote-list" id="vote"></div>
 
 </div>
@@ -37,16 +36,18 @@ socket.on("role",d=>{
 });
 
 socket.on("phase",p=>{
- if(p!=="voting") document.getElementById("vote").innerHTML="";
+ if(p!=="voting"){
+   document.getElementById("vote").innerHTML="";
+ }
 });
 
 socket.on("players",list=>{
  socket.on("phase",phase=>{
   if(phase==="voting"){
    document.getElementById("vote").innerHTML =
-   list.filter(p=>p.alive).map(p=>
-     `<button onclick="vote('${p.id}')">${p.name}</button>`
-   ).join("");
+   list.filter(p=>p.alive)
+       .map(p=>`<button onclick="vote('${p.id}')">${p.name}</button>`)
+       .join("");
   }
  });
 });
