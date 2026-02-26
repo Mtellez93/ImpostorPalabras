@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const WORDS = [
   "pizza","playa","doctor","guitarra",
-  "avion","cafe","perro","pelicula"
+  "avion","cafe","perro","pelicula","Star Wars", "Porno", "IA", "Internet","Africa","Futbol","Imaginacion","Amistad","Odio","Anime","Disneyland","shampoo","Tejido","Gigantes","Mentiras","Verdad","Aventuras","Navidad","Pokemon","MarioBros","California","Mexico"
 ];
 
 let games = {};
