@@ -1,4 +1,4 @@
-name: Deploy impostor
+name: Deploy impostorpalabras
 
 on:
   push:
