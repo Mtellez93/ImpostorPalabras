@@ -15,6 +15,7 @@ const WORDS = [
 ];
 
 let games = {};
+const PLAYER_GRACE_MS = 5 * 60 * 1000;
 
 function randomWord(){
   return WORDS[Math.floor(Math.random()*WORDS.length)];
@@ -28,6 +29,8 @@ function aliveIds(g){
 
 function broadcastPlayers(room){
   const g = games[room];
+  if(!g) return;
+
   io.to(room).emit("players",
     Object.entries(g.players).map(([id,p])=>({
       id,
@@ -39,6 +42,8 @@ function broadcastPlayers(room){
 
 function broadcastMissingVotes(room){
   const g = games[room];
+  if(!g || !g.votes) return;
+
   const missing = aliveIds(g)
     .filter(id => !g.votes[id])
     .map(id => g.players[id].name);
@@ -48,6 +53,8 @@ function broadcastMissingVotes(room){
 
 function broadcastVoteCounts(room){
   const g = games[room];
+  if(!g || !g.votes) return;
+
   let counts = {};
 
   Object.entries(g.players).forEach(([id,p])=>{
@@ -66,6 +73,8 @@ function broadcastVoteCounts(room){
 
 function checkVictory(room){
   const g = games[room];
+  if(!g) return false;
+
   const alive = aliveIds(g);
 
   if(!alive.includes(g.impostor)){
@@ -83,7 +92,13 @@ function checkVictory(room){
 
 function startRound(room){
   const g = games[room];
+  if(!g) return;
+
   const ids = Object.keys(g.players);
+  if(ids.length < 3){
+    io.to(room).emit("errorMessage","Se necesitan al menos 3 jugadores.");
+    return;
+  }
 
   g.word = randomWord();
   g.impostor = ids[Math.floor(Math.random()*ids.length)];
@@ -105,6 +120,8 @@ function startRound(room){
 
 function startVoting(room){
   const g = games[room];
+  if(!g) return;
+
   g.phase="voting";
   g.votes={};
 
@@ -117,6 +134,8 @@ function startVoting(room){
 
 function finishVoting(room){
   const g = games[room];
+  if(!g) return;
+
   let tally = {};
 
   Object.values(g.votes).forEach(v=>{
@@ -159,22 +178,101 @@ function finishVoting(room){
   io.to(room).emit("phase","discussion");
 }
 
+function roomOfSocket(socket){
+  return [...socket.rooms].find(r => r !== socket.id);
+}
+
+function attachSocketToPlayer(room, playerId, socket){
+  const g = games[room];
+  if(!g || !g.players[playerId]) return false;
+
+  g.players[playerId].socketId = socket.id;
+  if(g.players[playerId].disconnectTimer){
+    clearTimeout(g.players[playerId].disconnectTimer);
+    g.players[playerId].disconnectTimer = null;
+  }
+
+  socket.join(room);
+  socket.data.room = room;
+  socket.data.playerId = playerId;
+  return true;
+}
+
+function removePlayer(room, playerId){
+  const g = games[room];
+  if(!g || !g.players[playerId]) return;
+
+  const wasImpostor = g.impostor === playerId;
+  delete g.players[playerId];
+  if(g.votes){
+    delete g.votes[playerId];
+  }
+  if(g.impostor && !g.players[g.impostor]){
+    g.impostor = null;
+  }
+
+  broadcastPlayers(room);
+  if(g.phase === "voting"){
+    broadcastVoteCounts(room);
+    broadcastMissingVotes(room);
+  }
+
+  if(wasImpostor && g.phase){
+    io.to(room).emit("errorMessage","El impostor salió de la partida. Reinicien ronda.");
+    g.phase = null;
+  }
+}
+
 io.on("connection",socket=>{
 
   socket.on("create",()=>{
     const room=Math.random().toString(36).substring(2,6).toUpperCase();
-    games[room]={players:{}};
+    games[room]={players:{}, phase:null, votes:{}};
     socket.join(room);
+    socket.data.room = room;
     socket.emit("room",room);
   });
 
-  socket.on("join",({room,name})=>{
+  socket.on("join",({room,name,playerId})=>{
     const g=games[room];
-    if(!g) return;
+    if(!g){
+      socket.emit("errorMessage","No existe esa sala.");
+      return;
+    }
 
-    g.players[socket.id]={name,alive:true};
-    socket.join(room);
+    const cleanName = (name || "").trim();
+    if(!cleanName){
+      socket.emit("errorMessage","Ingresa un nombre válido.");
+      return;
+    }
 
+    if(playerId && g.players[playerId]){
+      g.players[playerId].name = cleanName;
+      attachSocketToPlayer(room, playerId, socket);
+      socket.emit("joined",{room,playerId,name:cleanName,reconnected:true});
+      if(g.phase){
+        socket.emit("phase",g.phase);
+      }
+    } else {
+      const newPlayerId = Math.random().toString(36).slice(2,10);
+      g.players[newPlayerId]={
+        name:cleanName,
+        alive:true,
+        socketId:socket.id,
+        disconnectTimer:null
+      };
+      attachSocketToPlayer(room, newPlayerId, socket);
+      socket.emit("joined",{room,playerId:newPlayerId,name:cleanName,reconnected:false});
+      if(g.phase){
+        socket.emit("phase",g.phase);
+      }
+      if(g.impostor){
+        socket.emit("role",{
+          word:newPlayerId===g.impostor?null:g.word,
+          impostor:newPlayerId===g.impostor
+        });
+      }
+    }
     broadcastPlayers(room);
   });
 
@@ -185,10 +283,12 @@ io.on("connection",socket=>{
     const g=games[room];
     if(!g) return;
 
-    const player=g.players[socket.id];
+    const playerId = socket.data.playerId;
+    const player=g.players[playerId];
     if(!player || !player.alive) return;
+    if(!g.players[target] || !g.players[target].alive) return;
 
-    g.votes[socket.id]=target;
+    g.votes[playerId]=target;
 
     broadcastVoteCounts(room);
     broadcastMissingVotes(room);
@@ -196,6 +296,20 @@ io.on("connection",socket=>{
     if(Object.keys(g.votes).length===aliveIds(g).length){
       finishVoting(room);
     }
+  });
+
+  socket.on("disconnect",()=>{
+    const room = socket.data.room || roomOfSocket(socket);
+    const playerId = socket.data.playerId;
+    if(!room || !playerId) return;
+
+    const g = games[room];
+    if(!g || !g.players[playerId]) return;
+    if(g.players[playerId].socketId !== socket.id) return;
+
+    g.players[playerId].disconnectTimer = setTimeout(()=>{
+      removePlayer(room, playerId);
+    }, PLAYER_GRACE_MS);
   });
 
 });
