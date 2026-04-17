@@ -88,6 +88,10 @@ socket.on("victory",v=>{
  alert(v==="civiles" ? "Ganaron los civiles 🎉" : "Ganó el impostor 😈");
 });
 
+socket.on("errorMessage",msg=>{
+ alert(msg);
+});
+
 function startRound(){ socket.emit("startRound",room); }
 function startVoting(){ socket.emit("startVoting",room); }
 </script>

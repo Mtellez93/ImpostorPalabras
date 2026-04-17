@@ -24,12 +24,36 @@
 
 <script>
 const socket=io();
-let room="";
+let room = localStorage.getItem("impostor_room") || "";
+let playerId = localStorage.getItem("impostor_player_id") || "";
+let playerName = localStorage.getItem("impostor_name") || "";
+let currentPhase = "";
+
+document.getElementById("room").value = room;
+document.getElementById("name").value = playerName;
 
 function join(){
- room=document.getElementById("room").value.toUpperCase();
- socket.emit("join",{room,name:document.getElementById("name").value});
+ room=document.getElementById("room").value.toUpperCase().trim();
+ playerName=document.getElementById("name").value.trim();
+ socket.emit("join",{room,name:playerName,playerId});
 }
+
+socket.on("connect",()=>{
+ if(room && playerName){
+  socket.emit("join",{room,name:playerName,playerId});
+ }
+});
+
+socket.on("joined",data=>{
+ room = data.room;
+ playerId = data.playerId;
+ playerName = data.name;
+ localStorage.setItem("impostor_room", room);
+ localStorage.setItem("impostor_player_id", playerId);
+ localStorage.setItem("impostor_name", playerName);
+ document.getElementById("room").value = room;
+ document.getElementById("name").value = playerName;
+});
 
 socket.on("role",d=>{
  document.getElementById("role").innerText =
@@ -37,20 +61,23 @@ socket.on("role",d=>{
 });
 
 socket.on("phase",p=>{
+ currentPhase = p;
  if(p!=="voting"){
    document.getElementById("vote").innerHTML="";
  }
 });
 
 socket.on("players",list=>{
- socket.on("phase",phase=>{
-  if(phase==="voting"){
-   document.getElementById("vote").innerHTML =
-   list.filter(p=>p.alive)
-       .map(p=>`<button onclick="vote('${p.id}')">${p.name}</button>`)
-       .join("");
-  }
- });
+ if(currentPhase==="voting"){
+  document.getElementById("vote").innerHTML =
+  list.filter(p=>p.alive)
+      .map(p=>`<button onclick="vote('${p.id}')">${p.name}</button>`)
+      .join("");
+ }
+});
+
+socket.on("errorMessage",msg=>{
+ alert(msg);
 });
 
 function vote(target){
